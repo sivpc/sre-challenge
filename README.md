@@ -50,6 +50,17 @@ payment-provider-abcdef1234-1ab25   1/1     Ready                        0      
 
 Write here about the :bug:, the fix, how you found it, and anything else you want to share.
 
+##### The :bug:
+container (deployment.yaml) has runAsNonRoot and image will run as root (Dockerfile)
+
+##### The fix
+Create NonRoot user in image (Dockerfile) and in the deployment runAs that user
+
+##### how you found it
+Step 1: kubectl get pods -> pod status in CreateContainerConfigError
+Step 2: kubectl describe pod <invoice-app-xxx-xxx> -> it shows the error (container has runAsNonRoot and image will run as root)
+
+
 ### Part 2 - Setup the apps
 
 We would like these 2 apps, `invoice-app` and `payment-provider`, to run in a K8s cluster and this is where you come in!
