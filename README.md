@@ -57,8 +57,8 @@ container (deployment.yaml) has runAsNonRoot and image will run as root (Dockerf
 Create NonRoot user in image (Dockerfile) and in the deployment runAs that user
 
 ##### how you found it
-Step 1: kubectl get pods -> pod status in CreateContainerConfigError
-Step 2: kubectl describe pod <invoice-app-xxx-xxx> -> it shows the error (container has runAsNonRoot and image will run as root)
+Step 1: kubectl get pods -> pod status in CreateContainerConfigError <br />
+Step 2: kubectl describe pod xxx-xxx -> it shows the error (container has runAsNonRoot and image will run as root)
 
 
 ### Part 2 - Setup the apps
@@ -68,11 +68,192 @@ We would like these 2 apps, `invoice-app` and `payment-provider`, to run in a K8
 #### Requirements
 
 1. `invoice-app` must be reachable from outside the cluster.
+   * Create a NordPort service for the invoice-app is fulfill above requirement
 2. `payment-provider` must be only reachable from inside the cluster.
+   * Create a ClusterIP service for the payment-provider is fulfill above requirement
 3. Update existing `deployment.yaml` files to follow k8s best practices. Feel free to remove existing files, recreate them, and/or introduce different technologies. Follow best practices for any other resources you decide to create.
-4. Provide a better way to pass the URL in `invoice-app/main.go` - it's hardcoded at the moment
-5. Complete `deploy.sh` in order to automate all the steps needed to have both apps running in a K8s cluster.
-6. Complete `test.sh` so we can validate your solution can successfully pay all the unpaid invoices and return a list of all the paid invoices.
+
+   *  invoice-app deployment.yaml 
+
+   ``` yaml	
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: invoice-app
+      spec:
+        replicas: 3
+        selector:
+          matchLabels:
+            app: invoice-app
+        template:
+          metadata:
+            labels:
+              app: invoice-app
+          spec:
+            containers:
+            - name: main
+              image: invoice-app:latest
+              imagePullPolicy: IfNotPresent
+              envFrom:
+              - configMapRef:
+                  name: invoice-app-config
+            securityContext:     
+              runAsNonRoot: true
+              runAsUser: 1001
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: invoice-app
+        labels:
+          app: invoice-app
+      spec:
+        type: NodePort
+        selector:
+          app: invoice-app
+        ports:
+          - protocol: TCP
+            name: http
+            port: 8081
+            targetPort: 8081
+    
+   ```
+       
+
+   * payment-provider deployment.yaml
+
+     ``` yaml
+       apiVersion: apps/v1
+       kind: Deployment
+       metadata:
+         name: payment-provider
+       spec:
+         replicas: 3
+         selector:
+           matchLabels:
+             app: payment-provider
+         template:
+           metadata:
+             labels:
+               app: payment-provider
+           spec:
+             containers:
+             - name: main
+               image: payment-provider:latest
+               imagePullPolicy: IfNotPresent
+             securityContext:
+               runAsNonRoot: true
+               runAsUser: 1001
+       ---
+       apiVersion: v1
+       kind: Service
+       metadata:
+         name: payment-provider
+         labels:
+           app: payment-provider
+       spec:
+         type: ClusterIP
+         selector:
+           app: payment-provider
+         ports:
+           - protocol: TCP
+             name: http
+             port: 8082
+             targetPort: 8082
+
+     ```
+
+
+3. Provide a better way to pass the URL in `invoice-app/main.go` - it's hardcoded at the moment
+   * Create a configmap and use that in deployment
+
+     * configmap.yaml
+
+        ``` yaml
+           apiVersion: v1
+           kind: ConfigMap
+           metadata:
+             name: invoice-app-config
+           data:
+             URL: http://payment-provider:8082/payments/pay
+        ```
+
+     * Use that in deployment.yaml
+
+       ``` yaml
+         spec:
+           containers:
+           - name: main
+             image: invoice-app:latest
+             imagePullPolicy: IfNotPresent
+             envFrom:
+             - configMapRef:
+                 name: invoice-app-config
+       ```
+       
+4. Complete `deploy.sh` in order to automate all the steps needed to have both apps running in a K8s cluster.
+
+   ```shell
+    #!/bin/bash
+    
+    # Start minikube
+    minikube start
+    
+    # invoice-app
+    # Build image
+    cd invoice-app \
+    && docker build -t invoice-app -f Dockerfile .
+    
+    # From host, push the Docker image directly to minikube
+    minikube image load invoice-app:latest
+    
+    # Apply configmap
+    kubectl apply -f configmap.yaml
+    
+    # Deploy
+    kubectl apply -f deployment.yaml
+    
+    # payment-provider
+    # Build image
+    cd ../payment-provider \
+    && docker build -t payment-provider -f Dockerfile .
+    
+    # From host, push the Docker image directly to minikube
+    minikube image load payment-provider:latest
+    
+    # Deploy deployment
+    kubectl apply -f deployment.yaml
+    
+    # Check that it's running
+    kubectl get pods
+
+   ```
+
+5. Complete `test.sh` so we can validate your solution can successfully pay all the unpaid invoices and return a list of all the paid invoices.
+
+   ```shell
+    #!/bin/bash
+
+    # Get invoice-app NodePort access
+    minikube service invoice-app --url
+    
+    # Export invoice-app NodePort URL.
+    export INVOICE_APP_URL=$(minikube service invoice-app --url)
+    echo "Get invoice-app NodePort URL"
+    echo $INVOICE_APP_URL
+    
+    # check invoices status
+    echo "Checking current status of bills..."
+    curl $INVOICE_APP_URL/invoices
+    
+    # pay
+    echo "Paying bills..."
+    curl -d '{"InvoiceId":"I1", "Value":"12.15", "Currency":"EUR"}' -H "Content-Type: application/json" -X POST $INVOICE_APP_URL/invoices/pay
+    
+    # check invoices status
+    echo "Checking current status of bills..."
+    curl $INVOICE_APP_URL/invoices
+   ```
 
 ### Part 3 - Questions
 
