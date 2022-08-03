@@ -287,8 +287,25 @@ Feel free to express your thoughts and share your experiences with real-world ex
 #### Requirements
 
 1. What would you do to improve this setup and make it "production ready"?
+   * High availability and disaster recovery
+   * Setup High performance load balancer
+   * Setup NGINX Ingress controller 
+   * Implement TLS secure communication for invoice app (Because invoice app is reachable from outside the cluster)
+   * Application/Cluster Authentication - IAM 
+   * Use Vault if needed for secrets config mgmt.
+   * Node Autoscaling (Spin up additional nodes if the existing ones can't accept any more pods.)
+   * Horizontal Pod Autoscaling (Horizontal scaling means that the response to increased load is to deploy more Pods)
+   * Decouple DB from invoice app. (Deploy DB as a StatefulSet or use managed DB service)
+   * Build & deploy with CI/CD Pipelines
+   * Setup Monitoring (Alerts & Dashboards for metrics) for cluster & application & centralised log management.
+   * kubernetes 
+     * Resource requests and limits for resource types.
+     * Liveness, Readiness & Startup probes
+     * Secrets & Namespaces
 2. There are 2 microservices that are maintained by 2 different teams. Each team should have access only to their service inside the cluster. How would you approach this?
+   * Deploy those 2 microservices in two different namespace. Using Role and RoleBinding gives those teams access for only their namespace
 3. How would you prevent other services running in the cluster to communicate to `payment-provider`?
+   * Create a Network Policy that payment-provider only allows traffic from the invoice-app
 
 ## What matters to us?
 
