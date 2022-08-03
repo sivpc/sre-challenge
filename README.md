@@ -322,7 +322,7 @@ Please follow these steps for running this application in mac.
    ```shell
     make tests
 
-### If you want to load new docker image to minikube you have to follow this.
+### Follow these steps for loading new docker image to minikube when you make any changes to the code to get reflected.
 
 1. Delete the existing deployment
    ```shell
