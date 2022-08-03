@@ -233,26 +233,47 @@ We would like these 2 apps, `invoice-app` and `payment-provider`, to run in a K8
 
    ```shell
     #!/bin/bash
-
-    # Get invoice-app NodePort access
-    minikube service invoice-app --url
     
-    # Export invoice-app NodePort URL.
+    # before run this test, you need to install jq tool
+    # Linux => sudo apt install jq, sudo dnf install jq
+    # Mac   => brew install jq
+    
+    # exporting invoice-app-url
     export INVOICE_APP_URL=$(minikube service invoice-app --url)
-    echo "Get invoice-app NodePort URL"
     echo $INVOICE_APP_URL
     
-    # check invoices status
-    echo "Checking current status of bills..."
-    curl $INVOICE_APP_URL/invoices
-    
-    # pay
-    echo "Paying bills..."
-    curl -d '{"InvoiceId":"I1", "Value":"12.15", "Currency":"EUR"}' -H "Content-Type: application/json" -X POST $INVOICE_APP_URL/invoices/pay
+    # save invoices in to file
+    curl $INVOICE_APP_URL/invoices > invoice.json
     
     # check invoices status
-    echo "Checking current status of bills..."
+    echo "Before Paid - Current status of invoices..."
     curl $INVOICE_APP_URL/invoices
+    
+    # Get the total number of invoices
+    size=$(jq length invoice.json)
+    
+    # Pay the invoice for all the unpaid ones
+    for (( c=0; c<size; c++ ))
+    do
+        result=$( echo $c+1 | bc )
+        InvoiceId=$(jq '.['$c'].InvoiceId' invoice.json)
+        Value=$(jq '.['$c'].Value' invoice.json)
+        Currency=$(jq '.['$c'].Currency' invoice.json)
+        IsPaid=$(jq '.['$c'].IsPaid' invoice.json)
+        if [ "$IsPaid" = "false" ]; then
+          echo "Paying Invoice" $result "bill..."
+          curl -d '{"InvoiceId":"'+$InvoiceId+'", "Value":"'+Value+'", "Currency":"'+Currency+'"}' -H "Content-Type: application/json" -X POST $INVOICE_APP_URL/invoices/pay
+        else
+          echo "Invoice "$result" has already been paid!"
+        fi
+    done
+    
+    # check invoices status
+    echo "After Paid - Current status of invoices..."
+    curl $INVOICE_APP_URL/invoices
+
+    echo "Test complete!"
+
    ```
 
 ### Part 3 - Questions
