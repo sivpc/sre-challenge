@@ -275,6 +275,10 @@ We would like these 2 apps, `invoice-app` and `payment-provider`, to run in a K8
     echo "Test complete!"
 
    ```
+   * There is a bug in the invoice-app with regard to payment status (IsPaid) updation of the invoice.
+   * Although the POST request ($INVOICE_APP_URL/invoices/pay) was successful the status of the "IsPaid" field is unchanged for invoices.
+   * The payment status of the invoices are not updated correctly always.
+   * This is an intermittent issue
 
 ### Part 3 - Questions
 
