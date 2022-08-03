@@ -307,6 +307,37 @@ Feel free to express your thoughts and share your experiences with real-world ex
 3. How would you prevent other services running in the cluster to communicate to `payment-provider`?
    * Create a Network Policy that payment-provider only allows traffic from the invoice-app
 
+## Instructions to run application in Local
+
+Please follow these steps for running this application in mac.
+
+1. Make sure docker is running in your local
+2. Install jq tool
+   ```shell
+    brew install jq
+3. Deploy the application 
+   ```shell
+    make deploy
+4. Run the tests
+   ```shell
+    make tests
+
+### If you want to load new docker image to minikube you have to follow this.
+
+1. Delete the existing deployment
+   ```shell
+   kubectl delete deploy invoice-app
+2. Remove old image from minikube
+   ```shell
+   minikube image rm invoice-app:latest
+3. Load new image to minikube
+   ```shell
+   minikube image load invoice-app:latest
+4. Deploy app
+   ```shell
+   kubectl apply -f deployment.yaml
+(new docker image mean code changes in inside but same tag -> invoice-app:latest)
+
 ## What matters to us?
 
 We expect the solution to run but we also want to know how you work and what matters to you as an engineer.

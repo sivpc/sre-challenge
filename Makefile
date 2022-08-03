@@ -1,4 +1,4 @@
 deploy:
 	./deploy.sh
-test:
+tests:
 	./test.sh
